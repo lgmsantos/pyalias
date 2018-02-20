@@ -1,0 +1,64 @@
+#! /usr/bin/env zsh
+
+script_dir=$( dirname $( readlink -f $0 ) )
+srcdir=$script_dir/../src/python
+bindir=$script_dir/../bin
+datadir=$script_dir/../data
+numpydir=$script_dir/../../numpy/
+
+export PYTHONPATH=$PYTHONPATH:$numpydir:$srcdir:$bindir
+
+mkdir -p $datadir
+
+DISTRIBUTION_SIZES=()
+for i in $( seq 10 20 ); do
+    DISTRIBUTION_SIZES=( $DISTRIBUTION_SIZES $(( 1 << i )) )
+done
+
+files=()
+
+for ds in $DISTRIBUTION_SIZES; do 
+    file_name=$( printf '%s/p%07d' $datadir $ds )
+    files=( $files $file_name )
+    if [[ ! -e $file_name ]]; then
+        echo generating file $file_name
+        python3 -m random_dist $ds $file_name
+    fi
+done
+
+
+for i in $( seq 1 ${#files} ); do
+    p_path=${files[i]}
+    echo running methods for file $( basename $p_path )
+    n=${DISTRIBUTION_SIZES[i]}
+    logn=$( echo $n | python3 -c '
+import math
+f = float(input())
+print(int( math.log(f, 2) ))' )
+
+    result_file=${p_path}-result.csv
+    if [[ ! -e $result_file ]]; then
+        tempfile=.temp
+        python3 -m choice header > $tempfile
+
+        for method in {binsearch-old,binsearch-fixed,alias}; do
+
+            sample_size=$(( n >> 5 ))
+
+            if [[ $sample_size -le 0 ]]; then
+                sample_size=1
+            fi
+
+            for j in $( seq 1 10 ); do 
+                echo $method $n $sample_size
+                time \
+                    python3 -m choice $method $p_path $sample_size >> $tempfile
+                echo 
+                sample_size=$(( sample_size << 1 ))
+            done
+        done
+
+        mv $tempfile $result_file
+    fi
+done
+
