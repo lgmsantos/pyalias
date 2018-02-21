@@ -6,12 +6,29 @@ usage:
 """
 
 from docopt import docopt
+from itertools import repeat, chain
 import sys
 import numpy as np
 import alias as al
 import time
+from math import log
 
-BUFFER_SIZE=1000
+class StopWatch(object):
+
+    def __init__(self):
+        self.start = self.end = None
+
+    def __enter__(self):
+        self.start = time.perf_counter()
+        self.end = None
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.end = time.perf_counter()
+        self.elapsed = self.end - self.start
+        return False
+
+BUFFER_SIZE=( 1 << 19 ) # 512 KB
 
 if __name__ == '__main__':
     args = docopt(__doc__)
@@ -33,20 +50,20 @@ if __name__ == '__main__':
 
     elif args['binsearch-fixed']:
         method_name = 'binsearch-fixed'
-        start = time.perf_counter()
-        dist = np.random.pdist.wrap(p)
-        dist.cumsum
-        end = time.perf_counter()
-        init_time = end - start
+        with StopWatch() as sw:
+            dist = np.random.pdist.wrap(p)
+            dist.cumsum
+        init_time = sw.elapsed
+
         def choice(k): 
             return np.random.choice(values, p=dist, size=k)
 
     elif args['alias']:
         method_name = 'alias'
-        start = time.perf_counter()
-        table = al.aliastable(p)
-        end = time.perf_counter()
-        init_time = end - start
+        with StopWatch() as sw:
+            table = al.aliastable(p)
+        init_time = sw.elapsed
+
         def choice(k):
             return al.choice(table, values, k)
         
@@ -56,25 +73,28 @@ if __name__ == '__main__':
         sys.exit(1)
 
     elapsed = 0
-    hits = np.zeros(n, dtype='i')
+    hits = np.zeros(n, dtype=int)
     total = 0
+    current_size = 1
+
     while total < sample_size:
-        if total + BUFFER_SIZE > sample_size:
-            size = sample_size - total
-        else:
-            size = BUFFER_SIZE
+        ks = repeat( BUFFER_SIZE, current_size // BUFFER_SIZE )
+        ks = chain( ks, (current_size % BUFFER_SIZE,) )
+        for k in ks:
+            with StopWatch() as sw:
+                r = choice(k)
 
-        start = time.perf_counter()
-        r = choice(size)
-        end = time.perf_counter()
+            total += k
+            elapsed += sw.elapsed
+            (ix, counts) = np.unique(r, return_counts=True)
+            hits[ix] += counts
 
-        total += size
-        elapsed += end - start
-        (ix, counts) = np.unique(r, return_counts=True)
-        hits[ix] += counts
+        freq = hits/np.sum(hits)
+        error = (p - freq)/p
+        print(method_name, n, total,
+                init_time, elapsed, np.mean(error),
+                np.std(error), np.min(error), np.max(error), sep=',')
 
-    freq = hits/np.sum(hits)
-    error = (p - freq)/p
-    print(method_name, n, total,
-            init_time, elapsed, np.mean(error),
-            np.std(error), np.min(error), np.max(error), sep=',')
+        current_size <<= 1
+        if total + current_size > sample_size:
+            current_size = sample_size - total

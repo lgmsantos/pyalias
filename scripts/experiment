@@ -11,7 +11,7 @@ export PYTHONPATH=$PYTHONPATH:$numpydir:$srcdir:$bindir
 mkdir -p $datadir
 
 DISTRIBUTION_SIZES=()
-for i in $( seq 10 20 ); do
+for i in $( seq 10 22 ); do
     DISTRIBUTION_SIZES=( $DISTRIBUTION_SIZES $(( 1 << i )) )
 done
 
@@ -29,34 +29,24 @@ done
 
 for i in $( seq 1 ${#files} ); do
     p_path=${files[i]}
-    echo running methods for file $( basename $p_path )
     n=${DISTRIBUTION_SIZES[i]}
-    logn=$( echo $n | python3 -c '
-import math
-f = float(input())
-print(int( math.log(f, 2) ))' )
+    sample_size=$(( 1 << 22 - 1 ))
+    result_file=$(dirname $p_path)/result-$(basename $p_path).csv
+    tempfile=.temp
 
-    result_file=${p_path}-result.csv
+    echo running methods for file $( basename $p_path )
+    echo $result_file
     if [[ ! -e $result_file ]]; then
-        tempfile=.temp
         python3 -m choice header > $tempfile
 
         for method in {binsearch-old,binsearch-fixed,alias}; do
-
-            sample_size=$(( n >> 5 ))
-
-            if [[ $sample_size -le 0 ]]; then
-                sample_size=1
-            fi
-
-            for j in $( seq 1 10 ); do 
-                echo $method $n $sample_size
-                time \
-                    python3 -m choice $method $p_path $sample_size >> $tempfile
-                echo 
-                sample_size=$(( sample_size << 1 ))
-            done
+            echo '   ' $method
+            time \
+                python3 -m choice $method $p_path $sample_size >> $tempfile
         done
+
+        echo done
+        echo
 
         mv $tempfile $result_file
     fi
