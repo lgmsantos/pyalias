@@ -1,6 +1,8 @@
 VPATH=../src/cython
 .PHONY: clean
 
+CFLAGS=-O3
+
 alias.so: alias.o
 	$(LD) $(LDFLAGS) -shared $< $(LDLIBS) -o $@
 
