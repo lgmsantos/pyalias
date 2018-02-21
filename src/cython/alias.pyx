@@ -1,17 +1,21 @@
+import cython
 import numpy as np
 cimport numpy as np
 
-def aliastable(np.ndarray p):
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def aliastable(np.ndarray[np.double_t, ndim=1] p):
 
-    cdef np.ndarray GS, F, L
+    cdef np.ndarray[np.double_t, ndim=1] F
+    cdef np.ndarray[np.long_t, ndim=1] GS, L
     cdef int n, i, j, k, s, g
 
     n = len(p)
 
-    GS = np.empty(n, dtype=np.int)
+    GS = np.empty(n, dtype=np.int64)
     (g, s) = (-1, n)
     F = n * p
-    L = np.arange(n, dtype=np.int)
+    L = np.arange(n, dtype=np.int64)
 
     for i in range(n):
         if F[i] >= 1.:
