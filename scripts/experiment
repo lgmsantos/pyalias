@@ -27,10 +27,10 @@ for ds in $DISTRIBUTION_SIZES; do
 done
 
 
+sample_size=$(( 1 << 23 - 1 ))
 for i in $( seq 1 ${#files} ); do
     p_path=${files[i]}
     n=${DISTRIBUTION_SIZES[i]}
-    sample_size=$(( 1 << 22 - 1 ))
     result_file=$(dirname $p_path)/result-$(basename $p_path).csv
     tempfile=.temp
 
