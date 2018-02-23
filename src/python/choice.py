@@ -34,7 +34,7 @@ if __name__ == '__main__':
     args = docopt(__doc__)
     
     if args['header']:
-        print('method,distribution_size,sample_size,init_time,time,mean_error,std_error,min_error,max_error')
+        print('method,distribution_size,sample_size,init_time,time,median_error,mean_error,std_error,min_error,max_error')
         sys.exit(0)
 
     p = np.fromfile(args['<p_file>'])
@@ -90,10 +90,17 @@ if __name__ == '__main__':
             hits[ix] += counts
 
         freq = hits/np.sum(hits)
-        error = (p - freq)/p
-        print(method_name, n, total,
-                init_time, elapsed, np.mean(error),
-                np.std(error), np.min(error), np.max(error), sep=',')
+        error = (freq - p)/p
+        print(method_name
+                , n
+                , total
+                , init_time
+                , elapsed
+                , np.median(error)
+                , np.mean(error)
+                , np.std(error)
+                , np.min(error)
+                , np.max(error), sep=',')
 
         current_size <<= 1
         if total + current_size > sample_size:
