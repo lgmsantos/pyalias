@@ -2,7 +2,7 @@
 
 usage: 
     choice header
-    choice (alias|binsearch-old|binsearch-fixed) <p_file> <sample_size>
+    choice (alias|alias-fast|binsearch-old|binsearch-fixed) <p_file> <sample_size>
 """
 
 from docopt import docopt
@@ -28,7 +28,7 @@ class StopWatch(object):
         self.elapsed = self.end - self.start
         return False
 
-BUFFER_SIZE=( 1 << 19 ) # 512 KB
+BUFFER_SIZE=( 1 << 19 ) # 4 MB
 
 if __name__ == '__main__':
     args = docopt(__doc__)
@@ -66,7 +66,16 @@ if __name__ == '__main__':
 
         def choice(k):
             return al.choice(table, values, k)
-        
+
+    elif args['alias-fast']:
+        method_name = 'alias-fast'
+        with StopWatch() as sw:
+            table = al.aliastable(p)
+        init_time = sw.elapsed
+
+        def choice(k):
+            return al.fast_choice(table, values, k)
+
     else:
         print('invalid args', file=sys.stderr)
         print('available options: alias, binsearch-old, binsearch-fixed', file=sys.stderr)

@@ -3,8 +3,10 @@
 script_dir=$( dirname $( readlink -f $0 ) )
 srcdir=$script_dir/../src/python
 bindir=$script_dir/../bin
+
+#make this point to the custom numpy build, if there is any
 numpydir=$script_dir/../../numpy/
 
-export PYTHONPATH=$PYTHONPATH:$numpydir:$srcdir:$bindir
+export PYTHONPATH=$numpydir:$srcdir:$bindir:$PYTHONPATH
 
 

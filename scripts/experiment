@@ -1,54 +1,78 @@
 #! /usr/bin/env zsh
 
 script_dir=$( dirname $( readlink -f $0 ) )
-srcdir=$script_dir/../src/python
-bindir=$script_dir/../bin
+source $script_dir/env
 datadir=$script_dir/../data
-numpydir=$script_dir/../../numpy/
-
-export PYTHONPATH=$PYTHONPATH:$numpydir:$srcdir:$bindir
 
 mkdir -p $datadir
 
+SIZE_START=10 # 2^10 (approx 1,000) to
+
+# how large distribution can this machine handle?
+# I'll guess based on /proc/meminfo
+freemem=$( cat /proc/meminfo | grep -i memfree | sed 's/[^0-9]//g' )
+if [[ $? -eq 0 ]]; then
+    freemem=$(( 1024 * freemem )) #free mem in bytes
+    SIZE_STOP=$( echo $freemem | python3 -c "
+from math import log
+mem=int(input())
+print( int(log( mem / 100, 2 )) )
+")
+
+else
+    echo 'could not find memory info' 
+    SIZE_STOP=20
+fi
+
+echo SIZE_STOP set to $SIZE_STOP
+
 DISTRIBUTION_SIZES=()
-for i in $( seq 10 22 ); do
+for i in $( seq $SIZE_START $SIZE_STOP ); do
     DISTRIBUTION_SIZES=( $DISTRIBUTION_SIZES $(( 1 << i )) )
 done
 
-files=()
+DISTRIBUTION_KIND=( 'random' 'linear' 'quad' 'exp' )
 
-for ds in $DISTRIBUTION_SIZES; do 
-    file_name=$( printf '%s/p%07d' $datadir $ds )
-    files=( $files $file_name )
-    if [[ ! -e $file_name ]]; then
-        echo generating file $file_name
-        python3 -m random_dist $ds $file_name
-    fi
-done
+for kind in $DISTRIBUTION_KIND; do
 
+    kinddir=$datadir/$kind
+    mkdir -p $kinddir
 
-sample_size=$(( 1 << 23 - 1 ))
-for i in $( seq 1 ${#files} ); do
-    p_path=${files[i]}
-    n=${DISTRIBUTION_SIZES[i]}
-    result_file=$(dirname $p_path)/result-$(basename $p_path).csv
-    tempfile=.temp
+    files=()
 
-    echo running methods for file $( basename $p_path )
-    echo $result_file
-    if [[ ! -e $result_file ]]; then
-        python3 -m choice header > $tempfile
+    for ds in $DISTRIBUTION_SIZES; do 
+        file_name=$( printf '%s/p%07d' $kinddir $ds )
+        files=( $files $file_name )
+        if [[ ! -e $file_name ]]; then
+            echo generating file $file_name
+            python3 -m pdist $kind $ds $file_name
+        fi
+    done
 
-        for method in {binsearch-old,binsearch-fixed,alias}; do
-            echo '   ' $method
-            time \
-                python3 -m choice $method $p_path $sample_size >> $tempfile
-        done
+    sample_size=$(( 1 << 23 - 1 ))
+    for i in $( seq 1 ${#files} ); do
 
-        echo done
-        echo
+        p_path=${files[i]}
+        n=${DISTRIBUTION_SIZES[i]}
+        result_file=$(dirname $p_path)/result-$(basename $p_path).csv
+        tempfile=.temp
 
-        mv $tempfile $result_file
-    fi
-done
+        echo running methods for file $( basename $p_path )
+        echo $result_file
+        if [[ ! -e $result_file ]]; then
+            python3 -m choice header > $tempfile
 
+            for method in {binsearch-old,binsearch-fixed,alias,alias-fast}; do
+                echo '   ' $method
+                time python3 -m choice \
+                    $method $p_path $sample_size >> $tempfile
+            done
+
+            echo done
+            echo
+
+            mv $tempfile $result_file
+        fi
+    done
+
+done 
