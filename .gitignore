@@ -6,3 +6,5 @@ __pycache__/
 src/cython/alias.c
 bin/*.c
 data/
+.temp
+notebooks/.ipynb_checkpoints/
