@@ -38,6 +38,10 @@ if __name__ == '__main__':
         sys.exit(0)
 
     p = np.fromfile(args['<p_file>'])
+    if np.any(np.isnan(p)):
+        print('distribution contains nan, aborting', file=sys.stderr)
+        sys.exit(1)
+
     n = len(p)
     values = np.arange(n)
     sample_size = int(args['<sample_size>'])
@@ -99,7 +103,10 @@ if __name__ == '__main__':
             hits[ix] += counts
 
         freq = hits/np.sum(hits)
-        error = (freq - p)/p
+        error = (freq - p)
+        nonzero_mask = (p != 0)
+        error[nonzero_mask] = error[nonzero_mask]/p[nonzero_mask]
+        error[(~nonzero_mask) & (freq != 0)] = float('inf')
         print(method_name
                 , n
                 , total
