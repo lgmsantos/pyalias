@@ -11,6 +11,3 @@ But for big sets (with approximately a million elements) and large number of
 choices (O(n log(n)) choices) the alias method is vastly supperior.
 
 ![Time taken to perform approximately a billion choices](https://raw.githubusercontent.com/lgmsantos/pyalias/master/figures/time.png)
-
-![Time taken to perform approximately a billion choices](https://raw.githubusercontent.com/lgmsantos/pyalias/master/figures/time.svg)
-
